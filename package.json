@@ -4,10 +4,10 @@
   "private": true,
   "packageManager": "pnpm@10",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "dotenv -e .env.develop -- next dev --webpack",
+    "build": "next build --webpack",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "echo \"No frontend tests yet\""
   },
@@ -30,6 +30,7 @@
     "@types/react-dom": "latest",
     "@typescript-eslint/eslint-plugin": "latest",
     "@typescript-eslint/parser": "latest",
+    "dotenv-cli": "latest",
     "eslint": "latest",
     "eslint-config-next": "latest",
     "prettier": "latest",

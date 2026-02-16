@@ -16,4 +16,8 @@ Next.js PWA for QR Bell owner and visitor experiences.
 - Output: Next.js default
 
 ## Environment
-Use `.env.example` as template.
+Use `.env.develop` for local development.
+
+Templates committed:
+- `.env.example`
+- `.env.develop.example`
