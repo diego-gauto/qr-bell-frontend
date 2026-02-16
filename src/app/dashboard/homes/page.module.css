@@ -1,0 +1,157 @@
+.container {
+  display: grid;
+  gap: var(--spacing-lg);
+}
+
+.header {
+  display: grid;
+  gap: var(--spacing-xs);
+}
+
+.title {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.panel {
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  display: grid;
+  gap: var(--spacing-md);
+}
+
+.panelTitle {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.form {
+  display: grid;
+  gap: var(--spacing-md);
+  max-width: 34rem;
+}
+
+.field {
+  display: grid;
+  gap: var(--spacing-xs);
+}
+
+.label {
+  font-size: 0.95rem;
+  color: var(--color-text-secondary);
+}
+
+.input {
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 0.7rem 0.75rem;
+  font-size: 0.95rem;
+}
+
+.submitButton {
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: #ffffff;
+  padding: 0.7rem 1rem;
+  cursor: pointer;
+  max-width: 12rem;
+}
+
+.submitButton:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.listHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+}
+
+.badge {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+}
+
+.homesGrid {
+  display: grid;
+  gap: var(--spacing-md);
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+
+.homeCard {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md);
+  display: grid;
+  gap: var(--spacing-md);
+  justify-items: center;
+}
+
+.homeMeta {
+  width: 100%;
+  display: grid;
+  gap: var(--spacing-xs);
+}
+
+.homeName {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.homeAddress {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+}
+
+.qrWrap {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: #ffffff;
+  padding: var(--spacing-sm);
+}
+
+.ringLink {
+  color: var(--color-primary);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.ringLink:hover {
+  text-decoration: underline;
+}
+
+.muted {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.error {
+  margin: 0;
+  color: var(--color-error);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 640px) {
+  .panel {
+    padding: var(--spacing-md);
+  }
+
+  .homesGrid {
+    grid-template-columns: 1fr;
+  }
+}
