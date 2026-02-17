@@ -121,16 +121,24 @@ export function NotificationSetup({ accessToken }: NotificationSetupProps): Reac
         'No se pudo leer el estado de suscripcion push.'
       );
 
-      const subscription =
-        existingSubscription ??
-        (await withTimeout(
-          registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as BufferSource
-          }),
-          15000,
-          'Timeout creando suscripcion push. Reintenta en unos segundos.'
-        ));
+      // Critical: if a subscription was created with a different VAPID key (common during setup),
+      // the backend push will be rejected by the push service. Renew it deterministically.
+      if (existingSubscription) {
+        await withTimeout(
+          existingSubscription.unsubscribe().then(() => undefined),
+          10000,
+          'No se pudo renovar la suscripcion push.'
+        );
+      }
+
+      const subscription = await withTimeout(
+        registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as BufferSource
+        }),
+        15000,
+        'Timeout creando suscripcion push. Reintenta en unos segundos.'
+      );
 
       await withTimeout(
         subscribePushNotifications(subscription, navigator.userAgent),
