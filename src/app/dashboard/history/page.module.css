@@ -1,0 +1,77 @@
+.container {
+  display: grid;
+  gap: 1rem;
+}
+
+.title {
+  margin: 0;
+}
+
+.muted {
+  margin: 0;
+  color: #4b5563;
+}
+
+.error {
+  margin: 0;
+  color: #dc2626;
+  white-space: pre-line;
+}
+
+.list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.item {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 0.9rem;
+  background: #ffffff;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.homeName {
+  font-weight: 700;
+}
+
+.badge {
+  font-size: 0.85rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.accepted {
+  border-color: #16a34a;
+  color: #166534;
+  background: #dcfce7;
+}
+
+.missed {
+  border-color: #dc2626;
+  color: #7f1d1d;
+  background: #fee2e2;
+}
+
+.ringing {
+  border-color: #2563eb;
+  color: #1e3a8a;
+  background: #dbeafe;
+}
+
+.meta {
+  font-size: 0.9rem;
+  color: #4b5563;
+}
+
