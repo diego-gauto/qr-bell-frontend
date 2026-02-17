@@ -1,7 +1,7 @@
 import { useAuthStore } from '@/store/authStore';
 import { AuthResponse, AuthSession, AuthUser, LoginPayload, RefreshPayload, RegisterPayload } from '../types/auth';
-
-const API_BASE_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000';
+import { requireApiBaseUrl } from '@/lib/config/apiBaseUrl';
+import { safeFetch } from '@/lib/net/safeFetch';
 
 interface ApiErrorPayload {
   message?: string | string[];
@@ -36,48 +36,52 @@ async function parseResponse<T>(response: Response, fallbackMessage: string): Pr
 }
 
 export async function register(payload: RegisterPayload): Promise<AuthResponse> {
-  const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+  const API_BASE_URL = requireApiBaseUrl();
+  const response = await safeFetch(`${API_BASE_URL}/api/auth/register`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify(payload)
-  });
+  }, { apiBaseUrl: API_BASE_URL });
 
   return parseResponse<AuthResponse>(response, 'Register failed');
 }
 
 export async function login(payload: LoginPayload): Promise<AuthResponse> {
-  const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+  const API_BASE_URL = requireApiBaseUrl();
+  const response = await safeFetch(`${API_BASE_URL}/api/auth/login`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify(payload)
-  });
+  }, { apiBaseUrl: API_BASE_URL });
 
   return parseResponse<AuthResponse>(response, 'Login failed');
 }
 
 export async function refresh(payload: RefreshPayload): Promise<AuthResponse> {
-  const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+  const API_BASE_URL = requireApiBaseUrl();
+  const response = await safeFetch(`${API_BASE_URL}/api/auth/refresh`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify(payload)
-  });
+  }, { apiBaseUrl: API_BASE_URL });
 
   return parseResponse<AuthResponse>(response, 'Session refresh failed');
 }
 
 export async function logout(accessToken: string): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/api/auth/logout`, {
+  const API_BASE_URL = requireApiBaseUrl();
+  const response = await safeFetch(`${API_BASE_URL}/api/auth/logout`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`
     }
-  });
+  }, { apiBaseUrl: API_BASE_URL });
 
   if (!response.ok) {
     throw new Error('Logout failed');
@@ -85,11 +89,12 @@ export async function logout(accessToken: string): Promise<void> {
 }
 
 export async function getProfile(accessToken: string): Promise<AuthUser> {
-  const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
+  const API_BASE_URL = requireApiBaseUrl();
+  const response = await safeFetch(`${API_BASE_URL}/api/auth/me`, {
     headers: {
       Authorization: `Bearer ${accessToken}`
     }
-  });
+  }, { apiBaseUrl: API_BASE_URL });
 
   return parseResponse<AuthUser>(response, 'Unable to fetch profile');
 }

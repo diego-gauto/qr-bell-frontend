@@ -1,6 +1,10 @@
 import { CreateHomePayload, Home } from '../types/home';
+import { requireApiBaseUrl } from '@/lib/config/apiBaseUrl';
+import { safeFetch } from '@/lib/net/safeFetch';
 
-const API_BASE_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000';
+function getApiBaseUrl(): string {
+  return requireApiBaseUrl();
+}
 
 interface ApiErrorPayload {
   message?: string | string[];
@@ -35,25 +39,27 @@ async function parseResponse<T>(response: Response, fallbackMessage: string): Pr
 }
 
 export async function createHome(accessToken: string, payload: CreateHomePayload): Promise<Home> {
-  const response = await fetch(`${API_BASE_URL}/api/homes`, {
+  const API_BASE_URL = getApiBaseUrl();
+  const response = await safeFetch(`${API_BASE_URL}/api/homes`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${accessToken}`
     },
     body: JSON.stringify(payload)
-  });
+  }, { apiBaseUrl: API_BASE_URL });
 
   return parseResponse<Home>(response, 'No se pudo crear el hogar');
 }
 
 export async function listHomes(accessToken: string): Promise<Home[]> {
-  const response = await fetch(`${API_BASE_URL}/api/homes`, {
+  const API_BASE_URL = getApiBaseUrl();
+  const response = await safeFetch(`${API_BASE_URL}/api/homes`, {
     method: 'GET',
     headers: {
       Authorization: `Bearer ${accessToken}`
     }
-  });
+  }, { apiBaseUrl: API_BASE_URL });
 
   return parseResponse<Home[]>(response, 'No se pudo cargar la lista de hogares');
 }

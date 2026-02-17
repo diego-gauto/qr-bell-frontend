@@ -1,6 +1,10 @@
 import { RingResponse } from '../types/ring';
+import { requireApiBaseUrl } from '@/lib/config/apiBaseUrl';
+import { safeFetch } from '@/lib/net/safeFetch';
 
-const API_BASE_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000';
+function getApiBaseUrl(): string {
+  return requireApiBaseUrl();
+}
 
 interface ApiErrorPayload {
   message?: string | string[];
@@ -35,7 +39,8 @@ async function parseResponse<T>(response: Response, fallbackMessage: string): Pr
 }
 
 export async function ringDoorbell(homeId: string): Promise<RingResponse> {
-  const response = await fetch(`${API_BASE_URL}/api/ring`, {
+  const API_BASE_URL = getApiBaseUrl();
+  const response = await safeFetch(`${API_BASE_URL}/api/ring`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
@@ -43,7 +48,7 @@ export async function ringDoorbell(homeId: string): Promise<RingResponse> {
     body: JSON.stringify({
       homeId
     })
-  });
+  }, { apiBaseUrl: API_BASE_URL });
 
   return parseResponse<RingResponse>(response, 'No se pudo enviar el timbre');
 }

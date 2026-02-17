@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 import { withAuthRetry } from '@/features/auth/services/authService';
 import { ROUTES } from '@/lib/constants/routes';
 import { useAuthStore } from '@/store/authStore';
-
-const API_BASE_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000';
+import { requireApiBaseUrl } from '@/lib/config/apiBaseUrl';
+import { safeFetch } from '@/lib/net/safeFetch';
 
 type CallStatus = 'accepted' | 'missed';
 
@@ -36,7 +36,8 @@ async function updateCallStatusWithAccessToken(
   callId: string,
   status: CallStatus
 ): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/api/calls/${encodeURIComponent(callId)}/status`, {
+  const API_BASE_URL = requireApiBaseUrl();
+  const response = await safeFetch(`${API_BASE_URL}/api/calls/${encodeURIComponent(callId)}/status`, {
     method: 'PATCH',
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -44,7 +45,7 @@ async function updateCallStatusWithAccessToken(
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({ status })
-  });
+  }, { apiBaseUrl: API_BASE_URL });
 
   if (!response.ok) {
     let payload: ApiErrorPayload = {};

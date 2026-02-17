@@ -1,6 +1,10 @@
 import { withAuthRetry } from '@/features/auth/services/authService';
+import { requireApiBaseUrl } from '@/lib/config/apiBaseUrl';
+import { safeFetch } from '@/lib/net/safeFetch';
 
-const API_BASE_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000';
+function getApiBaseUrl(): string {
+  return requireApiBaseUrl();
+}
 
 interface ApiErrorPayload {
   message?: string | string[];
@@ -23,7 +27,8 @@ async function subscribePushNotificationsWithAccessToken(
   subscription: PushSubscription,
   userAgent: string
 ): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/api/push/subscriptions`, {
+  const API_BASE_URL = getApiBaseUrl();
+  const response = await safeFetch(`${API_BASE_URL}/api/push/subscriptions`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -34,7 +39,7 @@ async function subscribePushNotificationsWithAccessToken(
       subscription,
       userAgent
     })
-  });
+  }, { apiBaseUrl: API_BASE_URL });
 
   if (!response.ok) {
     let payload: ApiErrorPayload = {};
