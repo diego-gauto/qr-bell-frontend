@@ -6,4 +6,5 @@ export interface RingResponse {
   updatedAt: string;
   answeredAt: string | null;
   missedAt: string | null;
+  visitorToken: string;
 }
