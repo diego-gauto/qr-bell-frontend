@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Providers } from './providers';
 
@@ -8,7 +8,10 @@ export const metadata: Metadata = {
     template: '%s | QR Bell'
   },
   description: 'QR Bell smart doorbell PWA',
-  manifest: '/manifest.json',
+  manifest: '/manifest.json'
+};
+
+export const viewport: Viewport = {
   themeColor: '#2563eb'
 };
 
