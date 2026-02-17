@@ -34,7 +34,22 @@ self.addEventListener('push', (event) => {
     data: payload.data ?? {}
   };
 
-  event.waitUntil(self.registration.showNotification(payload.title ?? 'QR Bell', options));
+  event.waitUntil(
+    (async () => {
+      const title = payload.title ?? 'QR Bell';
+      try {
+        await self.registration.showNotification(title, options);
+      } catch (error) {
+        // If a resource (icon/badge) fails to load, retry with minimal options.
+        await self.registration.showNotification(title, {
+          body: options.body,
+          requireInteraction: true,
+          tag: options.tag,
+          data: options.data
+        });
+      }
+    })()
+  );
 });
 
 self.addEventListener('notificationclick', (event) => {
