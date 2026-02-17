@@ -23,6 +23,7 @@ export default function DashboardHomesPage(): React.JSX.Element {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [actionMessageByHomeId, setActionMessageByHomeId] = useState<Record<string, string>>({});
 
   const {
     register,
@@ -105,6 +106,59 @@ export default function DashboardHomesPage(): React.JSX.Element {
     }
   };
 
+  const setHomeActionMessage = (homeId: string, message: string): void => {
+    setActionMessageByHomeId((prev) => ({ ...prev, [homeId]: message }));
+    window.setTimeout(() => {
+      setActionMessageByHomeId((prev) => {
+        const { [homeId]: _, ...rest } = prev;
+        return rest;
+      });
+    }, 2500);
+  };
+
+  const onCopyLink = async (home: Home): Promise<void> => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(home.ringUrl);
+        setHomeActionMessage(home.id, 'Link copiado.');
+        return;
+      }
+
+      // Fallback for older browsers.
+      const textarea = document.createElement('textarea');
+      textarea.value = home.ringUrl;
+      textarea.style.position = 'fixed';
+      textarea.style.left = '-9999px';
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(textarea);
+      setHomeActionMessage(home.id, ok ? 'Link copiado.' : 'No se pudo copiar el link.');
+    } catch {
+      setHomeActionMessage(home.id, 'No se pudo copiar el link.');
+    }
+  };
+
+  const onShareLink = async (home: Home): Promise<void> => {
+    try {
+      if (!navigator.share) {
+        await onCopyLink(home);
+        return;
+      }
+
+      await navigator.share({
+        title: `QR Bell - ${home.name}`,
+        text: `Timbre de ${home.name}`,
+        url: home.ringUrl
+      });
+      setHomeActionMessage(home.id, 'Compartido.');
+    } catch {
+      // User can cancel the native share sheet; do not treat as a hard error.
+      setHomeActionMessage(home.id, '');
+    }
+  };
+
   return (
     <main className={styles['container']}>
       <header className={styles['header']}>
@@ -160,9 +214,33 @@ export default function DashboardHomesPage(): React.JSX.Element {
                 <QRCodeSVG value={home.ringUrl} size={168} level="M" includeMargin />
               </div>
 
-              <a className={styles['ringLink']} href={home.ringUrl} target="_blank" rel="noreferrer">
-                Abrir URL de timbre
-              </a>
+              <div className={styles['actions']}>
+                <a className={styles['ringLink']} href={home.ringUrl} target="_blank" rel="noreferrer">
+                  Abrir URL de timbre
+                </a>
+
+                <div className={styles['actionRow']}>
+                  <button
+                    type="button"
+                    className={[styles['actionButton'], styles['actionButtonPrimary']].join(' ')}
+                    onClick={() => void onCopyLink(home)}
+                  >
+                    Copiar link
+                  </button>
+
+                  <button
+                    type="button"
+                    className={styles['actionButton']}
+                    onClick={() => void onShareLink(home)}
+                  >
+                    Compartir
+                  </button>
+                </div>
+
+                {actionMessageByHomeId[home.id] ? (
+                  <p className={styles['actionHint']}>{actionMessageByHomeId[home.id]}</p>
+                ) : null}
+              </div>
             </article>
           ))}
         </div>
