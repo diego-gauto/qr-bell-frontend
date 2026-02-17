@@ -8,6 +8,24 @@ interface NotificationSetupProps {
   accessToken: string | null;
 }
 
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMessage: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timeoutId = window.setTimeout(() => {
+      reject(new Error(timeoutMessage));
+    }, timeoutMs);
+
+    promise
+      .then((value) => {
+        window.clearTimeout(timeoutId);
+        resolve(value);
+      })
+      .catch((error: unknown) => {
+        window.clearTimeout(timeoutId);
+        reject(error);
+      });
+  });
+}
+
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
@@ -19,6 +37,48 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   }
 
   return outputArray;
+}
+
+async function getReadyServiceWorkerRegistration(): Promise<ServiceWorkerRegistration> {
+  if (!window.isSecureContext) {
+    throw new Error('Push requiere HTTPS o localhost. Usa la URL HTTPS del tunel.');
+  }
+
+  const registrations = await withTimeout(
+    navigator.serviceWorker.getRegistrations(),
+    10000,
+    'No se pudo leer registros de service worker.'
+  );
+
+  await Promise.all(
+    registrations.map(async (entry) => {
+      const activeScript = entry.active?.scriptURL ?? entry.installing?.scriptURL ?? entry.waiting?.scriptURL ?? '';
+
+      if (!activeScript.includes('/push-sw.js')) {
+        await entry.unregister();
+      }
+    })
+  );
+
+  const registration = await withTimeout(
+    navigator.serviceWorker.register('/push-sw.js', { scope: '/' }),
+    10000,
+    'Timeout registrando service worker. Recarga la pagina e intenta de nuevo.'
+  );
+
+  await withTimeout(
+    registration.update(),
+    8000,
+    'No se pudo actualizar el service worker.'
+  );
+
+  await withTimeout(
+    navigator.serviceWorker.ready,
+    12000,
+    'Service worker no quedo listo. Cierra y vuelve a abrir la pagina.'
+  );
+
+  return registration;
 }
 
 export function NotificationSetup({ accessToken }: NotificationSetupProps): React.JSX.Element {
@@ -34,7 +94,7 @@ export function NotificationSetup({ accessToken }: NotificationSetupProps): Reac
       return;
     }
 
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
       setError('Este navegador no soporta notificaciones push.');
       return;
     }
@@ -54,17 +114,29 @@ export function NotificationSetup({ accessToken }: NotificationSetupProps): Reac
         throw new Error('Permiso denegado para notificaciones.');
       }
 
-      const registration = await navigator.serviceWorker.ready;
-      const existingSubscription = await registration.pushManager.getSubscription();
+      const registration = await getReadyServiceWorkerRegistration();
+      const existingSubscription = await withTimeout(
+        registration.pushManager.getSubscription(),
+        10000,
+        'No se pudo leer el estado de suscripcion push.'
+      );
 
       const subscription =
         existingSubscription ??
-        (await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as BufferSource
-        }));
+        (await withTimeout(
+          registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as BufferSource
+          }),
+          15000,
+          'Timeout creando suscripcion push. Reintenta en unos segundos.'
+        ));
 
-      await subscribePushNotifications(accessToken, subscription, navigator.userAgent);
+      await withTimeout(
+        subscribePushNotifications(subscription, navigator.userAgent),
+        10000,
+        'Timeout guardando la suscripcion en backend.'
+      );
       setStatus('Notificaciones push activadas en este dispositivo.');
     } catch (caughtError) {
       const message =

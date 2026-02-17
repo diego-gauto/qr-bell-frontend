@@ -2,7 +2,7 @@
   "name": "qr-bell-frontend",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "pnpm@10",
+  "packageManager": "pnpm@10.17.1",
   "scripts": {
     "dev": "dotenv -e .env.develop -- next dev --webpack",
     "build": "next build --webpack",

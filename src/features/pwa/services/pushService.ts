@@ -1,3 +1,5 @@
+import { withAuthRetry } from '@/features/auth/services/authService';
+
 const API_BASE_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000';
 
 interface ApiErrorPayload {
@@ -16,7 +18,7 @@ function getErrorMessage(payload: ApiErrorPayload, fallback: string): string {
   return fallback;
 }
 
-export async function subscribePushNotifications(
+async function subscribePushNotificationsWithAccessToken(
   accessToken: string,
   subscription: PushSubscription,
   userAgent: string
@@ -25,6 +27,7 @@ export async function subscribePushNotifications(
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,
+      'ngrok-skip-browser-warning': 'true',
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
@@ -42,6 +45,25 @@ export async function subscribePushNotifications(
       payload = {};
     }
 
-    throw new Error(getErrorMessage(payload, 'No se pudo registrar notificaciones push'));
+    throw new Error(`${response.status}: ${getErrorMessage(payload, 'No se pudo registrar notificaciones push')}`);
   }
+
+  const contentType = response.headers.get('content-type') ?? '';
+  if (!contentType.includes('application/json')) {
+    throw new Error('Respuesta invalida del backend push. Revisa el tunel HTTPS.');
+  }
+
+  const payload = (await response.json()) as { id?: string };
+  if (!payload.id) {
+    throw new Error('Respuesta incompleta al registrar notificaciones push.');
+  }
+}
+
+export async function subscribePushNotifications(
+  subscription: PushSubscription,
+  userAgent: string
+): Promise<void> {
+  await withAuthRetry<void>((accessToken) =>
+    subscribePushNotificationsWithAccessToken(accessToken, subscription, userAgent)
+  );
 }
