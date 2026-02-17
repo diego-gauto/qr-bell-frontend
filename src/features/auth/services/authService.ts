@@ -97,7 +97,13 @@ export async function getProfile(accessToken: string): Promise<AuthUser> {
 export async function withAuthRetry<T>(
   request: (accessToken: string) => Promise<T>,
 ): Promise<T> {
-  const store = useAuthStore.getState();
+  // A push notification can open the app on a deep-link route (e.g. `/call/:id`)
+  // before any layout has hydrated the in-memory auth store.
+  let store = useAuthStore.getState();
+  if (!store.isHydrated) {
+    store.hydrate();
+    store = useAuthStore.getState();
+  }
 
   if (!store.accessToken || !store.refreshToken) {
     throw new Error('Authentication required');
