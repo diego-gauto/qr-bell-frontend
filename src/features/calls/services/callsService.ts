@@ -29,7 +29,8 @@ async function parseResponse<T>(response: Response, fallbackMessage: string): Pr
       payload = {};
     }
 
-    throw new Error(getErrorMessage(payload, fallbackMessage));
+    // Prefix HTTP status so `withAuthRetry` can detect 401 and refresh the session.
+    throw new Error(`${response.status}: ${getErrorMessage(payload, fallbackMessage)}`);
   }
 
   return (await response.json()) as T;
@@ -52,4 +53,3 @@ export async function listCalls(limit = 50): Promise<CallHistoryItem[]> {
     return parseResponse<CallHistoryItem[]>(response, 'No se pudo cargar el historial de llamadas');
   });
 }
-
