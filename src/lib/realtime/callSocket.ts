@@ -31,7 +31,8 @@ export function createVisitorCallSocket(params: { callId: string; visitorToken: 
 > {
   const API_BASE_URL = requireApiBaseUrl();
   return io(API_BASE_URL, {
-    transports: ['websocket'],
+    // Allow polling fallback on networks where WebSocket is blocked.
+    transports: ['websocket', 'polling'],
     query: {
       callId: params.callId,
       visitorToken: params.visitorToken
@@ -45,7 +46,7 @@ export function createOwnerCallSocket(params: { callId: string; accessToken: str
 > {
   const API_BASE_URL = requireApiBaseUrl();
   return io(API_BASE_URL, {
-    transports: ['websocket'],
+    transports: ['websocket', 'polling'],
     auth: {
       token: params.accessToken
     },
@@ -54,4 +55,3 @@ export function createOwnerCallSocket(params: { callId: string; accessToken: str
     }
   });
 }
-
