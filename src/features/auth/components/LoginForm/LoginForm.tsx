@@ -2,11 +2,13 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ROUTES } from '@/lib/constants/routes';
+import { getSafeNextPath } from '@/lib/security/safeRedirect';
 import { useAuthStore } from '@/store/authStore';
 import { login } from '../../services/authService';
 import { AuthShell } from '../AuthShell/AuthShell';
@@ -21,6 +23,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 export function LoginForm(): React.JSX.Element {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const setSession = useAuthStore((state) => state.setSession);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -42,7 +45,8 @@ export function LoginForm(): React.JSX.Element {
         accessToken: response.accessToken,
         refreshToken: response.refreshToken
       });
-      router.replace(ROUTES.dashboard);
+      const nextPath = getSafeNextPath(searchParams.get('next'));
+      router.replace(nextPath ?? ROUTES.dashboard);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se pudo iniciar sesion';
       setSubmitError(message);

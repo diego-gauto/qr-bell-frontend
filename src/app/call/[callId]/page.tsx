@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { withAuthRetry } from '@/features/auth/services/authService';
 import { ROUTES } from '@/lib/constants/routes';
+import { useAuthStore } from '@/store/authStore';
 
 const API_BASE_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000';
 
@@ -64,6 +65,7 @@ async function updateCallStatus(callId: string, status: CallStatus): Promise<voi
 
 export default function CallPage({ params }: CallPageProps): React.JSX.Element {
   const router = useRouter();
+  const { accessToken, isHydrated } = useAuthStore();
   const [callId, setCallId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
@@ -78,6 +80,17 @@ export default function CallPage({ params }: CallPageProps): React.JSX.Element {
       isMounted = false;
     };
   }, [params]);
+
+  useEffect(() => {
+    if (!isHydrated) {
+      return;
+    }
+
+    if (!accessToken) {
+      const nextPath = callId ? `/call/${encodeURIComponent(callId)}` : ROUTES.dashboard;
+      router.replace(`${ROUTES.login}?next=${encodeURIComponent(nextPath)}`);
+    }
+  }, [accessToken, callId, isHydrated, router]);
 
   const onUpdate = async (status: CallStatus): Promise<void> => {
     if (!callId) {
