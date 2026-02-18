@@ -263,15 +263,18 @@ export default function CallPage({ params }: CallPageProps): React.JSX.Element {
     try {
       if (status === 'accepted') {
         setVoiceState('connecting');
-        await startOwnerVoiceSession();
+        // Persist "accepted" first so late-connecting visitors can replay state via gateway.
+        await updateCallStatus(callId, 'accepted');
         socketRef.current?.emit('call:accept');
+        await startOwnerVoiceSession();
       } else {
         socketRef.current?.emit('call:end', { reason: 'owner_missed' });
         setVoiceState('ended');
         cleanup();
       }
-
-      await updateCallStatus(callId, status);
+      if (status !== 'accepted') {
+        await updateCallStatus(callId, status);
+      }
       setResult(status === 'accepted' ? 'Llamada aceptada.' : 'Llamada marcada como perdida.');
 
       if (status !== 'accepted') {
