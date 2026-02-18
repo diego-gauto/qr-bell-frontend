@@ -25,6 +25,7 @@ export function RingClient(): React.JSX.Element {
   const [callState, setCallState] = useState<VisitorCallState>('idle');
   const [callId, setCallId] = useState<string | null>(null);
   const [visitorToken, setVisitorToken] = useState<string | null>(null);
+  const [peerStatus, setPeerStatus] = useState<string | null>(null);
 
   const socketRef = useRef<ReturnType<typeof createVisitorCallSocket> | null>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
@@ -32,10 +33,16 @@ export function RingClient(): React.JSX.Element {
   const remoteStreamRef = useRef<MediaStream | null>(null);
   const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
   const pendingIceRef = useRef<RTCIceCandidateInit[]>([]);
+  const syncIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const canStartVoice = useMemo(() => Boolean(callId && visitorToken), [callId, visitorToken]);
 
   const cleanup = (): void => {
+    if (syncIntervalRef.current) {
+      clearInterval(syncIntervalRef.current);
+      syncIntervalRef.current = null;
+    }
+
     try {
       socketRef.current?.disconnect();
     } catch {
@@ -63,7 +70,6 @@ export function RingClient(): React.JSX.Element {
     return () => {
       cleanup();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const connectSignaling = (params: { callId: string; visitorToken: string }): void => {
@@ -72,15 +78,47 @@ export function RingClient(): React.JSX.Element {
     const socket = createVisitorCallSocket(params);
     socketRef.current = socket;
 
+    const startSyncLoop = (): void => {
+      if (syncIntervalRef.current) return;
+      // Reliability: on mobile networks it's common to miss a single realtime event.
+      // Poll socket-side state until accepted/ended.
+      syncIntervalRef.current = setInterval(() => {
+        try {
+          socket.emit('call:sync', {});
+        } catch {
+          // ignore
+        }
+      }, 1500);
+    };
+
+    const stopSyncLoop = (): void => {
+      if (syncIntervalRef.current) {
+        clearInterval(syncIntervalRef.current);
+        syncIntervalRef.current = null;
+      }
+    };
+
     socket.on('call:error', (payload) => {
       setErrorMessage(payload.message || 'Error de señalizacion.');
       setCallState('ended');
+      stopSyncLoop();
       cleanup();
+    });
+
+    socket.on('call:peer_joined', (payload) => {
+      if (payload.role === 'owner') {
+        setPeerStatus('Propietario conectado.');
+      }
+    });
+
+    socket.on('call:peer_left', () => {
+      setPeerStatus('Propietario desconectado.');
     });
 
     socket.on('call:accepted', async () => {
       setCallState('connecting');
       setErrorMessage(null);
+      stopSyncLoop();
 
       try {
         // Request mic only after owner accepts (minimizes unnecessary prompts).
@@ -89,6 +127,15 @@ export function RingClient(): React.JSX.Element {
 
         const pc = createAudioPeerConnection();
         pcRef.current = pc;
+
+        pc.onconnectionstatechange = () => {
+          const state = pc.connectionState;
+          if (state === 'failed' || state === 'disconnected') {
+            setErrorMessage('No se pudo conectar la voz (red). Intenta nuevamente.');
+            setCallState('ended');
+            cleanup();
+          }
+        };
 
         for (const track of localStream.getTracks()) {
           pc.addTrack(track, localStream);
@@ -100,6 +147,10 @@ export function RingClient(): React.JSX.Element {
           remoteStreamRef.current = stream;
           if (remoteAudioRef.current) {
             remoteAudioRef.current.srcObject = stream;
+            // Some mobile browsers require an explicit play attempt.
+            void remoteAudioRef.current.play().catch(() => {
+              // ignore
+            });
           }
         };
 
@@ -150,17 +201,27 @@ export function RingClient(): React.JSX.Element {
           caught instanceof Error ? caught.message : 'No se pudo iniciar la llamada de voz.';
         setErrorMessage(message);
         setCallState('ended');
+        stopSyncLoop();
         cleanup();
       }
     });
 
     socket.on('call:ended', () => {
       setCallState('ended');
+      stopSyncLoop();
       cleanup();
     });
 
     socket.on('connect', () => {
       setCallState('waiting_accept');
+      setPeerStatus(null);
+      // Ask server for the authoritative status immediately, then keep syncing while waiting.
+      try {
+        socket.emit('call:sync', {});
+      } catch {
+        // ignore
+      }
+      startSyncLoop();
     });
   };
 
@@ -180,6 +241,7 @@ export function RingClient(): React.JSX.Element {
       setVisitorToken(result.visitorToken);
       setSuccessMessage(`Timbre enviado. ID de llamada: ${result.id}`);
       setCallState('ring_sent');
+      setPeerStatus(null);
       connectSignaling({ callId: result.id, visitorToken: result.visitorToken });
     } catch (caughtError) {
       const message = caughtError instanceof Error ? caughtError.message : 'No se pudo enviar el timbre.';
@@ -226,6 +288,8 @@ export function RingClient(): React.JSX.Element {
             {callState === 'waiting_accept' ? 'Esperando que el propietario atienda...' : 'Conectando llamada de voz...'}
           </p>
         ) : null}
+
+        {peerStatus ? <p className={styles['subtitle']}>{peerStatus}</p> : null}
 
         {callState === 'connected' ? (
           <>

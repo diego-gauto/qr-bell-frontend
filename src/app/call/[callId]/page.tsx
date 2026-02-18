@@ -75,6 +75,7 @@ export default function CallPage({ params }: CallPageProps): React.JSX.Element {
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [voiceState, setVoiceState] = useState<VoiceState>('idle');
+  const [peerStatus, setPeerStatus] = useState<string | null>(null);
 
   const socketRef = useRef<ReturnType<typeof createOwnerCallSocket> | null>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
@@ -149,6 +150,16 @@ export default function CallPage({ params }: CallPageProps): React.JSX.Element {
       cleanup();
     });
 
+    socket.on('call:peer_joined', (payload) => {
+      if (payload.role === 'visitor') {
+        setPeerStatus('Visitante conectado.');
+      }
+    });
+
+    socket.on('call:peer_left', () => {
+      setPeerStatus('Visitante desconectado.');
+    });
+
     socket.on('webrtc:offer', async (payload) => {
       if (!payload?.sdp) return;
       if (!pcRef.current) {
@@ -199,12 +210,12 @@ export default function CallPage({ params }: CallPageProps): React.JSX.Element {
 
     socket.on('connect', () => {
       setVoiceState('waiting');
+      setPeerStatus(null);
     });
 
     return () => {
       cleanup();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canUseSocket]);
 
   const startOwnerVoiceSession = async (): Promise<void> => {
@@ -219,6 +230,15 @@ export default function CallPage({ params }: CallPageProps): React.JSX.Element {
     const pc = createAudioPeerConnection();
     pcRef.current = pc;
 
+    pc.onconnectionstatechange = () => {
+      const state = pc.connectionState;
+      if (state === 'failed' || state === 'disconnected') {
+        setError('No se pudo conectar la voz (red). Intenta nuevamente.');
+        setVoiceState('ended');
+        cleanup();
+      }
+    };
+
     for (const track of localStream.getTracks()) {
       pc.addTrack(track, localStream);
     }
@@ -229,6 +249,9 @@ export default function CallPage({ params }: CallPageProps): React.JSX.Element {
       remoteStreamRef.current = stream;
       if (remoteAudioRef.current) {
         remoteAudioRef.current.srcObject = stream;
+        void remoteAudioRef.current.play().catch(() => {
+          // ignore
+        });
       }
       setVoiceState('connected');
     };
@@ -265,7 +288,18 @@ export default function CallPage({ params }: CallPageProps): React.JSX.Element {
         setVoiceState('connecting');
         // Persist "accepted" first so late-connecting visitors can replay state via gateway.
         await updateCallStatus(callId, 'accepted');
-        socketRef.current?.emit('call:accept');
+        // Reliability: re-emit accept a few times. If a client missed one realtime event,
+        // it will still learn the status via call:sync, but this reduces perceived latency.
+        const emitAccept = () => {
+          try {
+            socketRef.current?.emit('call:accept');
+          } catch {
+            // ignore
+          }
+        };
+        emitAccept();
+        setTimeout(emitAccept, 1000);
+        setTimeout(emitAccept, 2500);
         await startOwnerVoiceSession();
       } else {
         socketRef.current?.emit('call:end', { reason: 'owner_missed' });
@@ -345,6 +379,7 @@ export default function CallPage({ params }: CallPageProps): React.JSX.Element {
 
       {voiceState === 'waiting' ? <p style={{ margin: 0, color: '#4b5563' }}>Esperando visitante...</p> : null}
       {voiceState === 'connecting' ? <p style={{ margin: 0, color: '#4b5563' }}>Conectando voz...</p> : null}
+      {peerStatus ? <p style={{ margin: 0, color: '#4b5563' }}>{peerStatus}</p> : null}
       {voiceState === 'connected' ? (
         <>
           <p style={{ margin: 0, color: '#16a34a' }}>Voz conectada.</p>

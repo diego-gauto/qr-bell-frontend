@@ -19,6 +19,7 @@ export type CallSocketServerToClientEvents = {
 
 export type CallSocketClientToServerEvents = {
   'call:accept': () => void;
+  'call:sync': (payload: Record<string, never>) => void;
   'call:end': (payload: { reason?: string }) => void;
   'webrtc:offer': (payload: { sdp: RTCSessionDescriptionInit }) => void;
   'webrtc:answer': (payload: { sdp: RTCSessionDescriptionInit }) => void;
