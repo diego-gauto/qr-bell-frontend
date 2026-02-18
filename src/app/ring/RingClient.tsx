@@ -26,6 +26,7 @@ export function RingClient(): React.JSX.Element {
   const [callId, setCallId] = useState<string | null>(null);
   const [visitorToken, setVisitorToken] = useState<string | null>(null);
   const [peerStatus, setPeerStatus] = useState<string | null>(null);
+  const callStateRef = useRef<VisitorCallState>('idle');
 
   const socketRef = useRef<ReturnType<typeof createVisitorCallSocket> | null>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
@@ -65,6 +66,10 @@ export function RingClient(): React.JSX.Element {
 
     pendingIceRef.current = [];
   };
+
+  useEffect(() => {
+    callStateRef.current = callState;
+  }, [callState]);
 
   useEffect(() => {
     return () => {
@@ -196,6 +201,15 @@ export function RingClient(): React.JSX.Element {
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
         socket.emit('webrtc:offer', { sdp: offer });
+
+        // If we never receive an answer / connection, fail fast with a clear message.
+        setTimeout(() => {
+          if (callStateRef.current === 'connecting') {
+            setErrorMessage('No se pudo conectar la voz (timeout). Corta la llamada y reintenta.');
+            setCallState('ended');
+            cleanup();
+          }
+        }, 25000);
       } catch (caught) {
         const message =
           caught instanceof Error ? caught.message : 'No se pudo iniciar la llamada de voz.';

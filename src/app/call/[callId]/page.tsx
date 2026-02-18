@@ -76,6 +76,7 @@ export default function CallPage({ params }: CallPageProps): React.JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [voiceState, setVoiceState] = useState<VoiceState>('idle');
   const [peerStatus, setPeerStatus] = useState<string | null>(null);
+  const voiceStateRef = useRef<VoiceState>('idle');
 
   const socketRef = useRef<ReturnType<typeof createOwnerCallSocket> | null>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
@@ -84,6 +85,10 @@ export default function CallPage({ params }: CallPageProps): React.JSX.Element {
   const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
   const pendingIceRef = useRef<RTCIceCandidateInit[]>([]);
   const pendingOfferRef = useRef<RTCSessionDescriptionInit | null>(null);
+
+  useEffect(() => {
+    voiceStateRef.current = voiceState;
+  }, [voiceState]);
 
   useEffect(() => {
     let isMounted = true;
@@ -301,6 +306,14 @@ export default function CallPage({ params }: CallPageProps): React.JSX.Element {
         setTimeout(emitAccept, 1000);
         setTimeout(emitAccept, 2500);
         await startOwnerVoiceSession();
+
+        setTimeout(() => {
+          if (voiceStateRef.current === 'connecting') {
+            setError('No se pudo conectar la voz (timeout). Pidele al visitante que reintente.');
+            setVoiceState('ended');
+            cleanup();
+          }
+        }, 25000);
       } else {
         socketRef.current?.emit('call:end', { reason: 'owner_missed' });
         setVoiceState('ended');
