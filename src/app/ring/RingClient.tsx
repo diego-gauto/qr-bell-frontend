@@ -203,7 +203,10 @@ export function RingClient(): React.JSX.Element {
     <main className={styles['page']}>
       <section className={styles['card']}>
         <h1 className={styles['title']}>QR Bell</h1>
-        <p className={styles['subtitle']}>Toca para avisar al propietario que estas en la puerta.</p>
+        <p className={styles['subtitle']}>
+          Toca para avisar al propietario que estas en la puerta.
+          Si el propietario atiende con voz, este celular puede hablar (pedira permiso de microfono la primera vez).
+        </p>
 
         <button
           className={styles['ringButton']}

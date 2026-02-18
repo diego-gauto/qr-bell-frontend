@@ -304,7 +304,7 @@ export default function CallPage({ params }: CallPageProps): React.JSX.Element {
       <p style={{ margin: 0, color: '#4b5563' }}>ID: {callId}</p>
 
       <p style={{ margin: 0 }}>
-        Selecciona el estado de la llamada.
+        Selecciona el estado de la llamada. Si tocas "Aceptar", se intentara iniciar voz (puede pedir microfono la primera vez).
       </p>
 
       <div style={{ display: 'grid', gap: '0.75rem' }}>
@@ -321,7 +321,7 @@ export default function CallPage({ params }: CallPageProps): React.JSX.Element {
             fontWeight: 600
           }}
         >
-          {isLoading ? 'Actualizando...' : 'Aceptar'}
+          {isLoading ? 'Actualizando...' : 'Aceptar (voz)'}
         </button>
         <button
           type="button"
