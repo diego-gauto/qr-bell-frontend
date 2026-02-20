@@ -26,6 +26,7 @@ export function RingClient(): React.JSX.Element {
   const [callId, setCallId] = useState<string | null>(null);
   const [visitorToken, setVisitorToken] = useState<string | null>(null);
   const [peerStatus, setPeerStatus] = useState<string | null>(null);
+  const [audioBlocked, setAudioBlocked] = useState(false);
   const callStateRef = useRef<VisitorCallState>('idle');
 
   const socketRef = useRef<ReturnType<typeof createVisitorCallSocket> | null>(null);
@@ -152,9 +153,11 @@ export function RingClient(): React.JSX.Element {
           remoteStreamRef.current = stream;
           if (remoteAudioRef.current) {
             remoteAudioRef.current.srcObject = stream;
-            // Some mobile browsers require an explicit play attempt.
-            void remoteAudioRef.current.play().catch(() => {
-              // ignore
+            remoteAudioRef.current.play().catch((err) => {
+              console.warn('[WebRTC] Autoplay bloqueado por el navegador', err);
+              if (err.name === 'NotAllowedError') {
+                setAudioBlocked(true);
+              }
             });
           }
         };
@@ -270,6 +273,16 @@ export function RingClient(): React.JSX.Element {
     }
   };
 
+  const onManualPlay = (): void => {
+    if (remoteAudioRef.current) {
+      remoteAudioRef.current.play().then(() => {
+        setAudioBlocked(false);
+      }).catch((err) => {
+        console.warn('[WebRTC] Fallo al intentar reproducir manualmente', err);
+      });
+    }
+  };
+
   const onCancel = (): void => {
     try {
       socketRef.current?.emit('call:end', { reason: 'visitor_cancel' });
@@ -314,6 +327,23 @@ export function RingClient(): React.JSX.Element {
           <>
             <p className={styles['success']}>Llamada conectada.</p>
             <audio ref={remoteAudioRef} autoPlay playsInline />
+            
+            {audioBlocked ? (
+              <button
+                className={styles['ringButton']}
+                type="button"
+                onClick={onManualPlay}
+                style={{
+                  border: '2px solid #eab308',
+                  background: '#fef08a',
+                  color: '#854d0e',
+                  marginTop: '1rem',
+                  marginBottom: '1rem',
+                }}
+              >
+                🔊 Tocar aquí para escuchar el audio
+              </button>
+            ) : null}
           </>
         ) : null}
 

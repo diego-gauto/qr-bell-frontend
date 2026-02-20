@@ -76,6 +76,7 @@ export default function CallPage({ params }: CallPageProps): React.JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [voiceState, setVoiceState] = useState<VoiceState>('idle');
   const [peerStatus, setPeerStatus] = useState<string | null>(null);
+  const [audioBlocked, setAudioBlocked] = useState(false);
   const voiceStateRef = useRef<VoiceState>('idle');
 
   const socketRef = useRef<ReturnType<typeof createOwnerCallSocket> | null>(null);
@@ -254,8 +255,11 @@ export default function CallPage({ params }: CallPageProps): React.JSX.Element {
       remoteStreamRef.current = stream;
       if (remoteAudioRef.current) {
         remoteAudioRef.current.srcObject = stream;
-        void remoteAudioRef.current.play().catch(() => {
-          // ignore
+        remoteAudioRef.current.play().catch((err) => {
+          console.warn('[WebRTC] Autoplay bloqueado por el navegador', err);
+          if (err.name === 'NotAllowedError') {
+            setAudioBlocked(true);
+          }
         });
       }
       setVoiceState('connected');
@@ -352,6 +356,16 @@ export default function CallPage({ params }: CallPageProps): React.JSX.Element {
     }
   };
 
+  const onManualPlay = (): void => {
+    if (remoteAudioRef.current) {
+      remoteAudioRef.current.play().then(() => {
+        setAudioBlocked(false);
+      }).catch((err) => {
+        console.warn('[WebRTC] Fallo al intentar reproducir manualmente', err);
+      });
+    }
+  };
+
   const onHangup = (): void => {
     try {
       socketRef.current?.emit('call:end', { reason: 'owner_hangup' });
@@ -412,6 +426,26 @@ export default function CallPage({ params }: CallPageProps): React.JSX.Element {
         <>
           <p style={{ margin: 0, color: '#16a34a' }}>Voz conectada.</p>
           <audio ref={remoteAudioRef} autoPlay playsInline />
+          
+          {audioBlocked ? (
+            <button
+              type="button"
+              onClick={onManualPlay}
+              style={{
+                padding: '0.9rem 1rem',
+                borderRadius: 12,
+                border: '2px solid #eab308',
+                background: '#fef08a',
+                color: '#854d0e',
+                fontWeight: 600,
+                marginTop: '1rem',
+                marginBottom: '1rem',
+              }}
+            >
+              🔊 Tocar aquí para escuchar el audio
+            </button>
+          ) : null}
+
           <button
             type="button"
             onClick={onHangup}
