@@ -78,8 +78,11 @@ export function RingClient(): React.JSX.Element {
     };
   }, []);
 
-  const connectSignaling = (params: { callId: string; visitorToken: string }): void => {
+  const connectSignaling = (params: { callId: string; visitorToken: string; localStream: MediaStream }): void => {
     cleanup();
+
+    // Guardar el stream que capturamos en el tap manual del usuario
+    localStreamRef.current = params.localStream;
 
     const socket = createVisitorCallSocket(params);
     socketRef.current = socket;
@@ -127,9 +130,11 @@ export function RingClient(): React.JSX.Element {
       stopSyncLoop();
 
       try {
-        // Request mic only after owner accepts (minimizes unnecessary prompts).
-        const localStream = await getLocalAudioStream();
-        localStreamRef.current = localStream;
+        // We already have the mic permission from onRing (bypassing mobile restrictions)
+        const localStream = localStreamRef.current;
+        if (!localStream) {
+          throw new Error('No se encontro el stream de audio local.');
+        }
 
         const pc = createAudioPeerConnection();
         pcRef.current = pc;
@@ -258,15 +263,21 @@ export function RingClient(): React.JSX.Element {
     setErrorMessage(null);
 
     try {
+      // 1. Pedir micrófono Inmediatamente en el tap del usuario.
+      // Si esperamos al socket, Safari/Chrome móvil lanzarán "Permission denied".
+      const localStream = await getLocalAudioStream();
+
+      // 2. Llamar a la API
       const result = await ringDoorbell(homeId);
       setCallId(result.id);
       setVisitorToken(result.visitorToken);
       setSuccessMessage(`Timbre enviado. ID de llamada: ${result.id}`);
       setCallState('ring_sent');
       setPeerStatus(null);
-      connectSignaling({ callId: result.id, visitorToken: result.visitorToken });
+      // 3. Iniciar WebSockets pasando el stream ya aprobado
+      connectSignaling({ callId: result.id, visitorToken: result.visitorToken, localStream });
     } catch (caughtError) {
-      const message = caughtError instanceof Error ? caughtError.message : 'No se pudo enviar el timbre.';
+      const message = caughtError instanceof Error ? caughtError.message : 'No se pudo activar el micrófono o enviar el timbre.';
       setErrorMessage(message);
     } finally {
       setIsRinging(false);
