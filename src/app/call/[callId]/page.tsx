@@ -82,7 +82,7 @@ export default function CallPage({ params }: CallPageProps): React.JSX.Element {
   const socketRef = useRef<ReturnType<typeof createOwnerCallSocket> | null>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
-  const remoteStreamRef = useRef<MediaStream | null>(null);
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
   const pendingIceRef = useRef<RTCIceCandidateInit[]>([]);
   const pendingOfferRef = useRef<RTCSessionDescriptionInit | null>(null);
@@ -121,8 +121,8 @@ export default function CallPage({ params }: CallPageProps): React.JSX.Element {
     stopStream(localStreamRef.current);
     localStreamRef.current = null;
 
-    stopStream(remoteStreamRef.current);
-    remoteStreamRef.current = null;
+    stopStream(remoteStream);
+    setRemoteStream(null);
 
     pendingIceRef.current = [];
     pendingOfferRef.current = null;
@@ -138,6 +138,18 @@ export default function CallPage({ params }: CallPageProps): React.JSX.Element {
       router.replace(`${ROUTES.login}?next=${encodeURIComponent(nextPath)}`);
     }
   }, [accessToken, callId, isHydrated, router]);
+
+  useEffect(() => {
+    if (remoteStream && remoteAudioRef.current) {
+      remoteAudioRef.current.srcObject = remoteStream;
+      remoteAudioRef.current.play().catch((err) => {
+        console.warn('[WebRTC] Autoplay bloqueado por el navegador', err);
+        if (err.name === 'NotAllowedError') {
+          setAudioBlocked(true);
+        }
+      });
+    }
+  }, [remoteStream]);
 
   useEffect(() => {
     if (!canUseSocket || socketRef.current) {
@@ -252,16 +264,8 @@ export default function CallPage({ params }: CallPageProps): React.JSX.Element {
     pc.ontrack = (event) => {
       const [stream] = event.streams;
       if (!stream) return;
-      remoteStreamRef.current = stream;
-      if (remoteAudioRef.current) {
-        remoteAudioRef.current.srcObject = stream;
-        remoteAudioRef.current.play().catch((err) => {
-          console.warn('[WebRTC] Autoplay bloqueado por el navegador', err);
-          if (err.name === 'NotAllowedError') {
-            setAudioBlocked(true);
-          }
-        });
-      }
+      // Guardarlo en estado disparará el useEffect que lo asigna al <audio>
+      setRemoteStream(stream);
       setVoiceState('connected');
     };
 

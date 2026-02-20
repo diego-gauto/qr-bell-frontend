@@ -32,7 +32,7 @@ export function RingClient(): React.JSX.Element {
   const socketRef = useRef<ReturnType<typeof createVisitorCallSocket> | null>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
-  const remoteStreamRef = useRef<MediaStream | null>(null);
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
   const pendingIceRef = useRef<RTCIceCandidateInit[]>([]);
   const syncIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -62,8 +62,8 @@ export function RingClient(): React.JSX.Element {
     stopStream(localStreamRef.current);
     localStreamRef.current = null;
 
-    stopStream(remoteStreamRef.current);
-    remoteStreamRef.current = null;
+    stopStream(remoteStream);
+    setRemoteStream(null);
 
     pendingIceRef.current = [];
   };
@@ -77,6 +77,18 @@ export function RingClient(): React.JSX.Element {
       cleanup();
     };
   }, []);
+
+  useEffect(() => {
+    if (remoteStream && remoteAudioRef.current) {
+      remoteAudioRef.current.srcObject = remoteStream;
+      remoteAudioRef.current.play().catch((err) => {
+        console.warn('[WebRTC] Autoplay bloqueado por el navegador', err);
+        if (err.name === 'NotAllowedError') {
+          setAudioBlocked(true);
+        }
+      });
+    }
+  }, [remoteStream]);
 
   const connectSignaling = (params: { callId: string; visitorToken: string; localStream: MediaStream }): void => {
     cleanup();
@@ -155,16 +167,8 @@ export function RingClient(): React.JSX.Element {
         pc.ontrack = (event) => {
           const [stream] = event.streams;
           if (!stream) return;
-          remoteStreamRef.current = stream;
-          if (remoteAudioRef.current) {
-            remoteAudioRef.current.srcObject = stream;
-            remoteAudioRef.current.play().catch((err) => {
-              console.warn('[WebRTC] Autoplay bloqueado por el navegador', err);
-              if (err.name === 'NotAllowedError') {
-                setAudioBlocked(true);
-              }
-            });
-          }
+          // Guardarlo en estado disparará el useEffect que lo asigna al <audio>
+          setRemoteStream(stream);
         };
 
         pc.onicecandidate = (event) => {
