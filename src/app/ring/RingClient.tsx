@@ -161,12 +161,14 @@ export function RingClient(): React.JSX.Element {
 
         pc.onicecandidate = (event) => {
           if (event.candidate) {
+            console.log('[WebRTC] Sending ICE candidate');
             socket.emit('webrtc:ice', { candidate: event.candidate.toJSON() });
           }
         };
 
         socket.on('webrtc:answer', async (payload) => {
           if (!pcRef.current) return;
+          console.log('[WebRTC] Received Answer');
           await pcRef.current.setRemoteDescription(payload.sdp);
           const pending = pendingIceRef.current;
           pendingIceRef.current = [];
@@ -183,13 +185,15 @@ export function RingClient(): React.JSX.Element {
         socket.on('webrtc:ice', async (payload) => {
           if (!pcRef.current) return;
           if (!pcRef.current.remoteDescription) {
+            console.log('[WebRTC] Queueing foreign ICE candidate (no remote desc yet)');
             pendingIceRef.current.push(payload.candidate);
             return;
           }
           try {
+            console.log('[WebRTC] Adding foreign ICE candidate');
             await pcRef.current.addIceCandidate(payload.candidate);
-          } catch {
-            // ignore
+          } catch (e) {
+            console.warn('[WebRTC] Failed to add foreign ICE candidate', e);
           }
         });
 
@@ -200,6 +204,7 @@ export function RingClient(): React.JSX.Element {
 
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
+        console.log('[WebRTC] Sending Offer');
         socket.emit('webrtc:offer', { sdp: offer });
 
         // If we never receive an answer / connection, fail fast with a clear message.

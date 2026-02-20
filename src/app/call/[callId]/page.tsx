@@ -270,11 +270,26 @@ export default function CallPage({ params }: CallPageProps): React.JSX.Element {
     // If an offer arrived before we created the PC, process it now.
     const offer = pendingOfferRef.current;
     if (offer) {
+      console.log('[WebRTC] Processing pending offer');
       pendingOfferRef.current = null;
       await pc.setRemoteDescription(offer);
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
       socket.emit('webrtc:answer', { sdp: answer });
+      
+      // Process any ICE candidates that arrived before we had a remote description
+      const pending = pendingIceRef.current;
+      if (pending.length > 0) {
+        console.log(`[WebRTC] Processing ${pending.length} pending ICE candidates`);
+        pendingIceRef.current = [];
+        for (const candidate of pending) {
+          try {
+            await pc.addIceCandidate(candidate);
+          } catch (e) {
+            console.warn('[WebRTC] Failed to add pending ICE candidate', e);
+          }
+        }
+      }
     }
   };
 
