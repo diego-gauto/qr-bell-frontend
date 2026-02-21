@@ -257,8 +257,12 @@ export default function CallPage({ params }: CallPageProps): React.JSX.Element {
       }
     };
 
+    // Forzar canal de audio bidireccional (soluciona problemas de silencio en Safari/Chrome mobile)
     for (const track of localStream.getTracks()) {
-      pc.addTrack(track, localStream);
+      pc.addTransceiver(track, {
+        direction: 'sendrecv',
+        streams: [localStream]
+      });
     }
 
     pc.ontrack = (event) => {
